@@ -1,9 +1,9 @@
 import React, {
   FC,
+  useState,
   FormEventHandler,
   MouseEventHandler,
-  ChangeEvent,
-  useState, ChangeEventHandler,
+  ChangeEventHandler,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { preview } from '../assets';
@@ -14,7 +14,6 @@ export interface Form {
   name: string;
   prompt: string;
   photo: string;
-  value: string;
 }
 
 export const CreatePost: FC = () => {
@@ -24,17 +23,66 @@ export const CreatePost: FC = () => {
     name: '',
     prompt: '',
     photo: '',
-    value: '',
   });
   const [generatingIMG, setGeneratingIMG] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  const generateImage: MouseEventHandler = () => {};
+  const generateImage: MouseEventHandler = async () => {
+    if (form.prompt) {
+      try {
+        setGeneratingIMG(true);
 
-  const handleSubmit: FormEventHandler = () => {};
+        const response = await fetch('http://localhost:8080/api/v1/dalle', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ prompt: form.prompt }),
+        });
+
+        const data = await response.json();
+
+        setForm({ ...form, photo: `data:image/jpeg;base64,${data.photo}` });
+      } catch (error) {
+        alert(error);
+      } finally {
+        setGeneratingIMG(false);
+      }
+    } else {
+      alert('Please, enter a prompt');
+    }
+  };
+
+  const handleSubmit: FormEventHandler = async (event) => {
+    event.preventDefault();
+
+    if (form.prompt && form.photo) {
+      setLoading(true);
+
+      try {
+        const response = await fetch('http://localhost:8080/api/v1/post', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(form),
+        });
+
+        await response.json();
+
+        navigate('/');
+      } catch (error) {
+        alert(error);
+      } finally {
+        setLoading(false);
+      }
+    } else {
+      alert('Please enter a prompt and generate an image');
+    }
+  };
 
   const handleChange: ChangeEventHandler<HTMLInputElement> = (event) => {
-    setForm({ ...form, [event.target.name]: event.target.value});
+    setForm({ ...form, [event.target.name]: event.target.value });
   };
 
   const handleSurpriseMe: MouseEventHandler = () => {
@@ -60,7 +108,7 @@ export const CreatePost: FC = () => {
             type="text"
             name="name"
             placeholder="John Doe"
-            value={form.value}
+            value={form.name}
             handleChange={handleChange}
           />
           <FormField
@@ -102,7 +150,7 @@ export const CreatePost: FC = () => {
             type="button"
             onClick={generateImage}
             disabled={generatingIMG}
-            className="text-white bg-green-700 font-medium rounded-md text-sm w-full sm:w-auto px-5 py-2.5 text-center"
+            className="text-white bg-green-700 font-medium rounded-md text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-40"
           >
             {generatingIMG ? 'Generating...' : 'Generate'}
           </button>
@@ -116,7 +164,7 @@ export const CreatePost: FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="mt-3 text-white bg-[#6469ff] font-medium rounded-md text-sm w-full sm:w-auto px-5 py-2.5 text-center"
+            className="mt-3 text-white bg-[#6469ff] font-medium rounded-md text-sm w-full sm:w-auto px-5 py-2.5 text-center disabled:opacity-40"
           >
             {loading ? 'Sharing...' : 'Share with the community'}
           </button>

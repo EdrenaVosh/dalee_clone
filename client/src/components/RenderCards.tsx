@@ -1,12 +1,9 @@
 import React, { FC } from 'react';
 import { Card } from './Card';
-
-interface Data {
-  _id: string;
-}
+import { Data } from '../types';
 
 interface RenderCardsProps {
-  data?: Data[];
+  data: Data[] | null;
   title: string;
 }
 

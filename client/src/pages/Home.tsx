@@ -1,10 +1,67 @@
-import React, { FC, useState, useEffect } from 'react';
+import React, {
+  FC,
+  useState,
+  useEffect,
+  useCallback,
+  ChangeEventHandler,
+} from 'react';
+import { debounce } from 'lodash';
 import { RenderCards, FormField, Loader } from '../components';
+import { Data } from '../types';
 
 export const Home: FC = () => {
   const [loading, setLoading] = useState(false);
-  const [allPosts, setAllPosts] = useState(null);
+  const [allPosts, setAllPosts] = useState<Data[] | null>(null);
   const [searchText, setSearchText] = useState('');
+  const [searchResults, setSearchResults] = useState<Data[] | null>(null);
+
+  useEffect(() => {
+    const fetchPosts = async () => {
+      setLoading(true);
+
+      try {
+        const response = await fetch('http://localhost:8080/api/v1/post', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+
+          setAllPosts(result.data.reverse());
+        }
+      } catch (error) {
+        alert(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchPosts();
+  }, []);
+
+  const debouncedSearch = debounce(() => {
+    const searchResults =
+      allPosts &&
+      allPosts.filter(
+        (post) =>
+          post.name.toLowerCase().includes(searchText.toLowerCase()) ||
+          post.prompt.toLowerCase().includes(searchText.toLowerCase())
+      );
+
+    setSearchResults(searchResults);
+  }, 500);
+
+  const handleSearchChange: ChangeEventHandler<HTMLInputElement> = useCallback(
+    (event) => {
+      setSearchText(event.target.value);
+
+      debouncedSearch()
+    },
+    [allPosts, searchText],
+  );
 
   return (
     <section className="max-w-7xl mx-auto">
@@ -19,7 +76,14 @@ export const Home: FC = () => {
       </div>
 
       <div className="mt-16">
-        <FormField />
+        <FormField
+          labelName="Search posts"
+          type="text"
+          name="text"
+          placeholder="Search text"
+          value={searchText}
+          handleChange={handleSearchChange}
+        />
       </div>
 
       <div className="mt-10">
@@ -37,9 +101,9 @@ export const Home: FC = () => {
             )}
             <div className="grid lg:grid-cols-4 sm:grid-cols-3 sx:grid-cols-2 grid-cols-1 gap-3">
               {searchText ? (
-                <RenderCards data={[]} title="No search results found" />
+                <RenderCards data={searchResults} title="No search results found" />
               ) : (
-                <RenderCards data={[]} title="No posts found" />
+                <RenderCards data={allPosts} title="No posts found" />
               )}
             </div>
           </>
